@@ -25,6 +25,7 @@ import type { Table, TableShape } from '@/types'
 import { Plus, Trash2, Users, MoreVertical, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 interface TableNodeData extends Record<string, unknown> {
   table: Table
@@ -82,9 +83,12 @@ export function TableCanvas({ className }: TableCanvasProps) {
   const [selectedTableId, setSelectedTableId] = useAtom(selectedTableIdAtom)
   const [viewMode] = useAtom(viewModeAtom)
   const [, setStatusFilter] = useAtom(statusFilterAtom)
+  const isMobile = useMediaQuery('(max-width: 768px)')
   
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showTableMenu, setShowTableMenu] = useState(false)
+  const [showFiltersMenu, setShowFiltersMenu] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   const initialNodes: Node<TableNodeData>[] = useMemo(() => {
     return tables.map((table) => ({
@@ -208,15 +212,18 @@ export function TableCanvas({ className }: TableCanvasProps) {
         <Panel position="bottom-center" className="!bottom-6">
           <div className="relative">
             <Button
-              onClick={() => setShowAddMenu(!showAddMenu)}
-              className="h-12 px-6 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 text-sm"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className={cn(
+                'rounded-xl bg-white/10 border border-white/20 hover:bg-white/20',
+                isMobile ? 'h-10 px-4 text-xs' : 'h-12 px-6 text-sm'
+              )}
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Añadir Mesa
+              <MoreVertical className={cn('mr-1', isMobile ? 'w-3 h-3' : 'w-4 h-4')} />
+              {isMobile ? 'Más' : 'Añadir Mesa'}
             </Button>
 
             <AnimatePresence>
-              {showAddMenu && (
+              {showMobileMenu && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -225,63 +232,81 @@ export function TableCanvas({ className }: TableCanvasProps) {
                 >
                   <Button
                     variant="secondary"
-                    onClick={() => addTable('round')}
-                    className="rounded-xl text-sm px-4"
+                    onClick={() => { addTable('round'); setShowMobileMenu(false); }}
+                    className="rounded-xl text-xs px-3 py-2"
                   >
-                    Redonda
+                    + Redonda
                   </Button>
                   <Button
                     variant="secondary"
-                    onClick={() => addTable('square')}
-                    className="rounded-xl text-sm px-4"
+                    onClick={() => { addTable('square'); setShowMobileMenu(false); }}
+                    className="rounded-xl text-xs px-3 py-2"
                   >
-                    Cuadrada
+                    + Cuadrada
                   </Button>
+                  {selectedTable && viewMode === 'edit' && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => { deleteTable(selectedTable.id); setShowMobileMenu(false); }}
+                      className="rounded-xl text-xs px-3 py-2"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-
-          {selectedTable && viewMode === 'edit' && (
-            <Button
-              variant="destructive"
-              onClick={() => deleteTable(selectedTable.id)}
-              className="h-12 px-6 rounded-xl ml-2"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
         </Panel>
 
         <Panel position="top-center" className="!top-4">
-          <div className="flex gap-1 bg-dark/80 backdrop-blur-xl rounded-xl p-1.5 border border-white/10">
+          <div className="relative">
             <button
-              onClick={() => setStatusFilter('all')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                'bg-white/20 text-white'
-              )}
+              onClick={() => setShowFiltersMenu(!showFiltersMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-dark/80 backdrop-blur-xl rounded-xl border border-white/10 text-white/70 hover:text-white"
             >
-              Todas
+              <MoreVertical className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">Filtros</span>
             </button>
-            <button
-              onClick={() => setStatusFilter('free')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                'text-white/60 hover:text-white hover:bg-white/10'
+
+            <AnimatePresence>
+              {showFiltersMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full mt-2 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 bg-dark/95 backdrop-blur-xl rounded-xl border border-white/10"
+                >
+                  <button
+                    onClick={() => { setStatusFilter('all'); setShowFiltersMenu(false); }}
+                    className={cn(
+                      'px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all',
+                      'bg-white/20 text-white'
+                    )}
+                  >
+                    Todas
+                  </button>
+                  <button
+                    onClick={() => { setStatusFilter('free'); setShowFiltersMenu(false); }}
+                    className={cn(
+                      'px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all',
+                      'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                  >
+                    Libres
+                  </button>
+                  <button
+                    onClick={() => { setStatusFilter('occupied'); setShowFiltersMenu(false); }}
+                    className={cn(
+                      'px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all',
+                      'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                  >
+                    Ocupadas
+                  </button>
+                </motion.div>
               )}
-            >
-              Libres
-            </button>
-            <button
-              onClick={() => setStatusFilter('occupied')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                'text-white/60 hover:text-white hover:bg-white/10'
-              )}
-            >
-              Ocupadas
-            </button>
+            </AnimatePresence>
           </div>
         </Panel>
 

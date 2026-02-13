@@ -131,7 +131,7 @@ export function TimeSheet() {
               className={cn(
                 'fixed bg-dark/95 backdrop-blur-xl z-50 overflow-hidden',
                 isMobile 
-                  ? 'bottom-0 left-0 right-0 h-[75vh] rounded-t-2xl border-t border-white/10'
+                  ? 'bottom-0 left-0 right-0 h-screen rounded-none border-t-0'
                   : 'top-0 right-0 h-full w-full max-w-sm border-l border-white/10'
               )}
             >

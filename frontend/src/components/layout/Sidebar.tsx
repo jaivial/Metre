@@ -9,11 +9,13 @@ import {
   Clock,
   ChefHat,
   X,
+  ChevronLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { useAtom } from 'jotai'
 import { isSidebarOpenAtom } from '@/stores/atoms'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 interface SidebarProps {
   children?: React.ReactNode
@@ -30,13 +32,14 @@ const menuItems = [
 
 export function Sidebar({ children }: SidebarProps) {
   const [isOpen, setIsOpen] = useAtom(isSidebarOpenAtom)
+  const isMobile = useMediaQuery('(max-width: 768px)')
 
   return (
     <>
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 h-12 w-12 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10"
+        className="fixed top-4 left-4 z-50 h-11 w-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10"
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -54,40 +57,57 @@ export function Sidebar({ children }: SidebarProps) {
               onClick={() => setIsOpen(false)}
             />
             <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
+              initial={isMobile ? { y: -400 } : { x: -280 }}
+              animate={isMobile ? { y: 0 } : { x: 0 }}
+              exit={isMobile ? { y: -400 } : { x: -280 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 left-0 h-full w-72 bg-dark/95 backdrop-blur-xl border-r border-white/10 z-50"
+              className={cn(
+                'fixed bg-dark/95 backdrop-blur-xl z-50',
+                isMobile 
+                  ? 'top-0 left-0 right-0 h-[70vh] rounded-b-2xl border-b border-white/10'
+                  : 'top-0 left-0 h-full w-72 border-r border-white/10'
+              )}
             >
-              <div className="flex flex-col h-full p-4">
-                <div className="flex items-center gap-3 px-2 py-4 border-b border-white/10">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <ChefHat className="w-5 h-5" />
+              <div className={cn('flex flex-col h-full', isMobile ? 'p-3' : 'p-4')}>
+                <div className="flex items-center justify-between px-2 py-3 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                      <ChefHat className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-white text-sm">Metre</h2>
+                      <p className="text-[10px] text-white/50">Gestión</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-white">Metre</h2>
-                    <p className="text-xs text-white/50">Gestión de restaurante</p>
-                  </div>
+                  {isMobile && (
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className="p-2 rounded-lg hover:bg-white/10"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-white/70" />
+                    </button>
+                  )}
                 </div>
 
-                <nav className="flex-1 py-4 space-y-2">
+                <nav className={cn('flex-1 py-3 space-y-1', isMobile && 'overflow-y-auto')}>
                   {menuItems.map((item) => (
                     <button
                       key={item.id}
                       className={cn(
-                        'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 transition-all duration-200',
-                        'hover:bg-white/10 hover:text-white'
+                        'w-full flex items-center gap-3 rounded-xl transition-all duration-200',
+                        isMobile ? 'px-3 py-2.5 text-sm' : 'px-4 py-3 text-sm',
+                        'text-white/80 hover:bg-white/10 hover:text-white'
                       )}
+                      onClick={() => setIsOpen(false)}
                     >
-                      <item.icon className="w-5 h-5" />
+                      <item.icon className={isMobile ? 'w-4 h-4' : 'w-5 h-5'} />
                       <span className="font-medium">{item.label}</span>
                     </button>
                   ))}
                 </nav>
 
-                <div className="border-t border-white/10 pt-4">
-                  <p className="px-4 text-xs text-white/40 mb-2">Restaurant Demo</p>
+                <div className="border-t border-white/10 pt-3">
+                  <p className="px-2 text-[10px] text-white/40">Restaurant Demo</p>
                 </div>
               </div>
             </motion.aside>

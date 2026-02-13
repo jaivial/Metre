@@ -1,90 +1,75 @@
-import { useMemo, useCallback, useState } from 'react'
-import { Rnd } from 'react-rnd'
-import { useAtom, useAtomValue } from 'jotai'
+import { useCallback, useState, useMemo } from 'react'
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+  useNodesState,
+  useEdgesState,
+  Node,
+  NodeProps,
+  BackgroundVariant,
+  ConnectionMode,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { useAtom } from 'jotai'
 import {
   tablesAtom,
   selectedTableIdAtom,
   viewModeAtom,
   statusFilterAtom,
-  filteredTablesAtom,
 } from '@/stores/atoms'
 import { cn, calculateTableSize } from '@/lib/utils'
 import type { Table, TableShape } from '@/types'
-import { Users, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Users, MoreVertical, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { motion, AnimatePresence } from 'framer-motion'
 
-interface TableComponentProps {
+interface TableNodeData extends Record<string, unknown> {
   table: Table
   isSelected: boolean
-  onSelect: (id: string) => void
-  onPositionChange: (id: string, x: number, y: number) => void
-  onResize: (id: string, width: number, height: number) => void
   viewMode: 'edit' | 'view'
 }
 
-function TableComponent({
-  table,
-  isSelected,
-  onSelect,
-  onPositionChange,
-  onResize,
-  viewMode,
-}: TableComponentProps) {
-  const [isDragging, setIsDragging] = useState(false)
-
-  const handleDragStop = useCallback(
-    (_: unknown, d: { x: number; y: number }) => {
-      onPositionChange(table.id, d.x, d.y)
-    },
-    [table.id, onPositionChange]
-  )
-
-  const handleResizeStop = useCallback(
-    (_: unknown, __: unknown, ___: unknown, deltaP: { width: number; height: number }) => {
-      const newWidth = table.width + deltaP.width
-      const newHeight = table.height + deltaP.height
-      onResize(table.id, Math.max(60, newWidth), Math.max(60, newHeight))
-    },
-    [table.id, table.width, table.height, onResize]
-  )
-
+function TableNode({ data, selected }: NodeProps<Node<TableNodeData>>) {
+  const { table, isSelected, viewMode } = data
+  
   const statusColors = {
-    free: 'bg-green-500/20 border-green-500/40',
-    occupied: 'bg-gray-500/30 border-gray-500/50',
-    reserved: 'bg-yellow-500/20 border-yellow-500/40',
+    free: 'bg-green-500/30 border-green-500/50',
+    occupied: 'bg-gray-500/40 border-gray-500/60',
+    reserved: 'bg-yellow-500/30 border-yellow-500/50',
   }
 
+  const baseClasses = 'rounded-xl border-2 transition-all duration-200 flex items-center justify-center'
+  
+  const size = table.shape === 'round' 
+    ? { width: table.width, height: table.height }
+    : { width: table.width, height: table.height }
+
   return (
-    <Rnd
-      size={{ width: table.width, height: table.height }}
-      position={{ x: table.x, y: table.y }}
-      onDragStart={() => setIsDragging(true)}
-      onDragStop={handleDragStop}
-      onResizeStop={handleResizeStop}
-      disableDragging={viewMode === 'view'}
-      enableResizing={viewMode === 'edit'}
-      bounds="parent"
-      minWidth={60}
-      minHeight={60}
+    <div
       className={cn(
-        'transition-all duration-200 border-2 cursor-pointer',
+        baseClasses,
         statusColors[table.status],
-        isSelected && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-dark',
-        isDragging && 'opacity-80 scale-105 z-50'
+        selected && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-dark',
+        table.shape === 'round' && 'rounded-full'
       )}
       style={{
-        touchAction: 'none',
+        width: size.width,
+        height: size.height,
+        minWidth: 60,
+        minHeight: 60,
       }}
-      onClick={() => onSelect(table.id)}
     >
-      <div className="w-full h-full flex flex-col items-center justify-center">
-        <span className="text-lg font-bold text-white">{table.number}</span>
-        <div className="flex items-center gap-1 text-white/70 text-xs">
-          <Users className="w-3 h-3" />
-          <span>{table.capacity}</span>
+      <div className="text-center">
+        <span className="text-sm font-bold text-white block">{table.number}</span>
+        <div className="flex items-center gap-1 justify-center">
+          <Users className="w-3 h-3 text-white/70" />
+          <span className="text-xs text-white/70">{table.capacity}</span>
         </div>
       </div>
-    </Rnd>
+    </div>
   )
 }
 
@@ -97,38 +82,50 @@ export function TableCanvas({ className }: TableCanvasProps) {
   const [selectedTableId, setSelectedTableId] = useAtom(selectedTableIdAtom)
   const [viewMode] = useAtom(viewModeAtom)
   const [, setStatusFilter] = useAtom(statusFilterAtom)
-  const filteredTables = useAtomValue(filteredTablesAtom)
-
+  
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showTableMenu, setShowTableMenu] = useState(false)
 
-  const displayedTables = useMemo(() => {
-    return tables
-  }, [tables, filteredTables])
+  const initialNodes: Node<TableNodeData>[] = useMemo(() => {
+    return tables.map((table) => ({
+      id: table.id,
+      type: 'tableNode',
+      position: { x: table.x, y: table.y },
+      data: { 
+        table, 
+        isSelected: table.id === selectedTableId,
+        viewMode 
+      },
+      selected: table.id === selectedTableId,
+    }))
+  }, [tables, selectedTableId, viewMode])
 
-  const handleSelectTable = useCallback(
-    (id: string) => {
-      setSelectedTableId(selectedTableId === id ? null : id)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setSelectedTableId(selectedTableId === node.id ? null : node.id)
+      setShowTableMenu(false)
     },
     [selectedTableId, setSelectedTableId]
+  )
+
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setTables((prev: Table[]) =>
+        prev.map((t) =>
+          t.id === node.id ? { ...t, x: node.position.x, y: node.position.y } : t
+        )
+      )
+    },
+    [setTables]
   )
 
   const handlePositionChange = useCallback(
     (id: string, x: number, y: number) => {
       setTables((prev: Table[]) =>
         prev.map((t) => (t.id === id ? { ...t, x, y } : t))
-      )
-    },
-    [setTables]
-  )
-
-  const handleResize = useCallback(
-    (id: string, width: number, height: number) => {
-      const avgSize = (width + height) / 2
-      const newCapacity = Math.max(1, Math.round((avgSize - 60) / 15) + 1)
-      setTables((prev: Table[]) =>
-        prev.map((t) =>
-          t.id === id ? { ...t, width, height, capacity: Math.min(newCapacity, 10) } : t
-        )
       )
     },
     [setTables]
@@ -161,6 +158,7 @@ export function TableCanvas({ className }: TableCanvasProps) {
       if (selectedTableId === id) {
         setSelectedTableId(null)
       }
+      setShowTableMenu(false)
     },
     [selectedTableId, setTables, setSelectedTableId]
   )
@@ -170,103 +168,163 @@ export function TableCanvas({ className }: TableCanvasProps) {
     [tables, selectedTableId]
   )
 
-  return (
-    <div className={cn('relative w-full h-full overflow-hidden', className)}>
-      <div
-        className="absolute inset-4 rounded-2xl border border-white/10 bg-dark/50 overflow-hidden"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
-      >
-        {displayedTables.map((table) => (
-          <TableComponent
-            key={table.id}
-            table={table}
-            isSelected={selectedTableId === table.id}
-            onSelect={handleSelectTable}
-            onPositionChange={handlePositionChange}
-            onResize={handleResize}
-            viewMode={viewMode}
-          />
-        ))}
-      </div>
+  const nodeTypes = {
+    tableNode: TableNode,
+  }
 
-      {viewMode === 'edit' && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+  return (
+    <div className={cn('w-full h-full', className)}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onNodeDragStop={onNodeDragStop}
+        nodeTypes={nodeTypes}
+        connectionMode={ConnectionMode.Loose}
+        fitView
+        panOnScroll
+        zoomOnScroll={false}
+        minZoom={0.5}
+        maxZoom={2}
+        className="bg-dark"
+        defaultEdgeOptions={{ type: 'smoothstep' }}
+      >
+        <Background 
+          variant={BackgroundVariant.Dots} 
+          gap={40} 
+          size={1}
+          color="rgba(255,255,255,0.1)"
+        />
+        <Controls 
+          showZoom={false}
+          showFitView={false}
+          showInteractive={false}
+          position="bottom-right"
+          className="!bottom-20 !right-4"
+        />
+        
+        <Panel position="bottom-center" className="!bottom-6">
           <div className="relative">
             <Button
               onClick={() => setShowAddMenu(!showAddMenu)}
-              className="h-14 px-6 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20"
+              className="h-12 px-6 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 text-sm"
             >
-              <Plus className="w-5 h-5 mr-2" />
+              <Plus className="w-4 h-4 mr-2" />
               Añadir Mesa
             </Button>
 
-            {showAddMenu && (
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-dark/95 backdrop-blur-xl rounded-xl border border-white/10">
-                <Button
-                  variant="secondary"
-                  onClick={() => addTable('round')}
-                  className="rounded-xl"
+            <AnimatePresence>
+              {showAddMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-dark/95 backdrop-blur-xl rounded-xl border border-white/10"
                 >
-                  Redonda
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => addTable('square')}
-                  className="rounded-xl"
-                >
-                  Cuadrada
-                </Button>
-              </div>
-            )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => addTable('round')}
+                    className="rounded-xl text-sm px-4"
+                  >
+                    Redonda
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => addTable('square')}
+                    className="rounded-xl text-sm px-4"
+                  >
+                    Cuadrada
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {selectedTable && (
+          {selectedTable && viewMode === 'edit' && (
             <Button
               variant="destructive"
               onClick={() => deleteTable(selectedTable.id)}
-              className="h-14 px-6 rounded-xl"
+              className="h-12 px-6 rounded-xl ml-2"
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="w-4 h-4" />
             </Button>
           )}
-        </div>
-      )}
+        </Panel>
 
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 bg-dark/80 backdrop-blur-xl rounded-xl p-2 border border-white/10">
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={cn(
-            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-            'bg-white/20 text-white'
-          )}
-        >
-          Todas
-        </button>
-        <button
-          onClick={() => setStatusFilter('free')}
-          className={cn(
-            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-            'text-white/60 hover:text-white hover:bg-white/10'
-          )}
-        >
-          Libres
-        </button>
-        <button
-          onClick={() => setStatusFilter('occupied')}
-          className={cn(
-            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-            'text-white/60 hover:text-white hover:bg-white/10'
-          )}
-        >
-          Ocupadas
-        </button>
-      </div>
+        <Panel position="top-center" className="!top-4">
+          <div className="flex gap-1 bg-dark/80 backdrop-blur-xl rounded-xl p-1.5 border border-white/10">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                'bg-white/20 text-white'
+              )}
+            >
+              Todas
+            </button>
+            <button
+              onClick={() => setStatusFilter('free')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                'text-white/60 hover:text-white hover:bg-white/10'
+              )}
+            >
+              Libres
+            </button>
+            <button
+              onClick={() => setStatusFilter('occupied')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                'text-white/60 hover:text-white hover:bg-white/10'
+              )}
+            >
+              Ocupadas
+            </button>
+          </div>
+        </Panel>
+
+        {selectedTable && viewMode === 'view' && (
+          <Panel position="bottom-center" className="!bottom-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 bg-dark/95 backdrop-blur-xl rounded-xl border border-white/10 flex items-center gap-4"
+            >
+              <div className="text-center min-w-[50px]">
+                <p className="text-xl font-bold text-white">{selectedTable.number}</p>
+                <p className="text-[10px] text-white/50">Mesa</p>
+              </div>
+              <div className="h-8 w-px bg-white/10" />
+              <div className="text-center min-w-[50px]">
+                <p className="text-xl font-bold text-white">{selectedTable.capacity}</p>
+                <p className="text-[10px] text-white/50">Capacidad</p>
+              </div>
+              <div className="h-8 w-px bg-white/10" />
+              <div className="text-center min-w-[70px]">
+                <p className={cn(
+                  'text-sm font-semibold',
+                  selectedTable.status === 'free' && 'text-green-400',
+                  selectedTable.status === 'occupied' && 'text-gray-400',
+                  selectedTable.status === 'reserved' && 'text-yellow-400'
+                )}>
+                  {selectedTable.status === 'free' && 'Libre'}
+                  {selectedTable.status === 'occupied' && 'Ocupada'}
+                  {selectedTable.status === 'reserved' && 'Reservada'}
+                </p>
+                <p className="text-[10px] text-white/50">Estado</p>
+              </div>
+              <button
+                onClick={() => setSelectedTableId(null)}
+                className="ml-2 p-1.5 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-4 h-4 text-white/70" />
+              </button>
+            </motion.div>
+          </Panel>
+        )}
+      </ReactFlow>
     </div>
   )
 }

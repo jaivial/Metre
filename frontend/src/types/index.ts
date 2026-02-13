@@ -4,7 +4,7 @@ export type TableStatus = 'free' | 'occupied' | 'reserved'
 
 export interface Table {
   id: string
-  number: number
+  number: number | string
   shape: TableShape
   capacity: number
   x: number
@@ -15,6 +15,23 @@ export interface Table {
   reservationId?: string
   combinedWith?: string[]
 }
+
+export type CanvasObjectShape = 'round' | 'square'
+
+export interface CanvasObject {
+  id: string
+  shape: CanvasObjectShape
+  x: number
+  y: number
+  width: number
+  height: number
+  locked: boolean
+}
+
+export type CanvasLimits =
+  | { kind: 'none' }
+  | { kind: 'rect'; rect: { x: number; y: number; width: number; height: number } }
+  | { kind: 'poly'; points: Array<{ x: number; y: number }> }
 
 export type ShiftType = 'breakfast' | 'lunch' | 'afternoon_snack' | 'dinner'
 

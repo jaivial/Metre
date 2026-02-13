@@ -104,7 +104,7 @@ export function ReservationForm({
           guestsCount: validated.guestsCount,
           tableId: selectedTableId || undefined,
           tableNumber: selectedTableId
-            ? tables.find((t) => t.id === selectedTableId)?.number
+            ? (tables.find((t) => t.id === selectedTableId)?.number as number)
             : undefined,
           status: 'confirmed',
           comments: validated.comments,

@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAtom, useAtomValue } from 'jotai'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
+  Calendar as CalendarIcon,
   LayoutGrid,
   Eye,
   Edit3,
+  Menu,
   Users,
   Clock,
   Plus,
+  X,
 } from 'lucide-react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TimeSheet } from '@/components/layout/TimeSheet'
@@ -18,6 +21,8 @@ import {
   tablesAtom,
   selectedDateAtom,
   selectedShiftAtom,
+  isSidebarOpenAtom,
+  isSheetOpenAtom,
   viewModeAtom,
   selectedTableIdAtom,
   selectedTableAtom,
@@ -111,6 +116,8 @@ export default function App() {
   const [reservations, setReservations] = useAtom(reservationsAtom)
   const [selectedDate] = useAtom(selectedDateAtom)
   const [selectedShift] = useAtom(selectedShiftAtom)
+  const [isSidebarOpen, setIsSidebarOpen] = useAtom(isSidebarOpenAtom)
+  const [, setIsSheetOpen] = useAtom(isSheetOpenAtom)
   const [viewMode, setViewMode] = useAtom(viewModeAtom)
   const [selectedTableId, setSelectedTableId] = useAtom(selectedTableIdAtom)
   const [isReservationFormOpen, setIsReservationFormOpen] = useState(false)
@@ -137,13 +144,21 @@ export default function App() {
   }, [tables])
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-dark">
+    <div className="h-screen w-screen overflow-hidden bg-dark relative">
       <Sidebar />
       <TimeSheet />
 
-      <div className="h-full pl-16 pr-16">
-        <header className="h-16 flex items-center justify-between px-6 border-b border-white/10">
+      <div className="h-full pl-4 pr-4 relative">
+        <header className="hidden xl:flex h-16 items-center justify-between px-6 border-b border-white/10">
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="flex h-10 w-10 items-center justify-center rounded-[1.8rem] text-white/80 transition-colors active:text-white"
+            >
+              {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
             <h1 className="text-xl font-semibold text-white">
               {format(new Date(selectedDate), 'EEEE, d MMMM', { locale: es })}
             </h1>
@@ -199,10 +214,19 @@ export default function App() {
               <Plus className="w-4 h-4 mr-2" />
               Nueva Reserva
             </Button>
+
+            <button
+              type="button"
+              aria-label="Calendario"
+              onClick={() => setIsSheetOpen((prev) => !prev)}
+              className="flex h-10 w-10 items-center justify-center rounded-[1.8rem] text-white/80 transition-colors active:text-white"
+            >
+              <CalendarIcon className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
-        <main className="h-[calc(100vh-64px)] p-4">
+        <main className="h-screen xl:h-[calc(100vh-64px)]">
           <TableCanvas className="h-full" />
         </main>
       </div>

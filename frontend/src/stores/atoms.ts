@@ -1,6 +1,6 @@
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
-import type { Table, Reservation, Shift, ShiftType, DailyLimit } from '@/types'
+import type { Table, Reservation, Shift, ShiftType, DailyLimit, CanvasObject, CanvasLimits } from '@/types'
 
 export const tablesAtom = atom<Table[]>([])
 
@@ -13,6 +13,14 @@ export const selectedTableAtom = atom((get) => {
 })
 
 export const reservationsAtom = atom<Reservation[]>([])
+
+export const canvasObjectsAtom = atom<CanvasObject[]>([])
+
+export const selectedObjectIdAtom = atom<string | null>(null)
+
+export const isAddObjectModalOpenAtom = atom<boolean>(false)
+
+export const editingObjectIdAtom = atom<string | null>(null)
 
 export const selectedDateAtom = atomWithStorage<string>('metre-selected-date', new Date().toISOString().split('T')[0])
 
@@ -27,6 +35,8 @@ export const selectedReservationAtom = atom((get) => {
   const selectedId = get(selectedReservationIdAtom)
   return reservations.find((r) => r.id === selectedId) || null
 })
+
+export const canvasLimitsAtom = atom<CanvasLimits>({ kind: 'none' })
 
 export const shiftsAtom = atom<Shift[]>([])
 
@@ -80,6 +90,16 @@ export const seatedReservationsAtom = atom((get) => {
 export const isSidebarOpenAtom = atomWithStorage<boolean>('metre-sidebar-open', false)
 
 export const isSheetOpenAtom = atomWithStorage<boolean>('metre-sheet-open', false)
+
+export const isAddTableModalOpenAtom = atom<boolean>(false)
+
+export const editingTableIdAtom = atom<string | null>(null)
+
+export const editingTableAtom = atom((get) => {
+  const tables = get(tablesAtom)
+  const editingId = get(editingTableIdAtom)
+  return tables.find((t) => t.id === editingId) || null
+})
 
 export const wsConnectedAtom = atom<boolean>(false)
 

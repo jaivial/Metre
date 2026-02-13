@@ -1,9 +1,7 @@
 import React, { useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar as CalendarIcon,
-  X,
-  ChevronDown,
+  PanelLeftClose,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -21,6 +19,13 @@ import { Button } from '@/components/ui/Button'
 import { Calendar } from '@/components/ui/Calendar'
 import type { ShiftType, Reservation } from '@/types'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarTrigger,
+} from '@/components/ui/radix-sidebar'
 
 const shifts: { type: ShiftType; label: string; hours: string }[] = [
   { type: 'breakfast', label: 'Desayuno', hours: '08:00 - 12:00' },
@@ -106,154 +111,129 @@ export function TimeSheet() {
       <Button
         variant="secondary"
         size="icon"
-        className="fixed top-4 right-4 z-50 h-11 w-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10"
+        className="fixed top-4 right-4 z-50 h-11 w-11 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 xl:hidden"
         onClick={() => setIsOpen(!isOpen)}
       >
         <CalendarIcon className="h-5 w-5" />
       </Button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-              onClick={() => setIsOpen(false)}
-            />
-            <motion.div
-              initial={isMobile ? { y: 400 } : { x: 400 }}
-              animate={isMobile ? { y: 0 } : { x: 0 }}
-              exit={isMobile ? { y: 400 } : { x: 400 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className={cn(
-                'fixed bg-dark/95 backdrop-blur-xl z-50 overflow-hidden',
-                isMobile 
-                  ? 'bottom-0 left-0 right-0 h-screen rounded-none border-t-0'
-                  : 'top-0 right-0 h-full w-full max-w-sm border-l border-white/10'
+      <SidebarProvider open={isOpen} onOpenChange={setIsOpen}>
+        <Sidebar
+          side="right"
+          className={cn(
+            'z-50 overflow-hidden',
+            isMobile ? 'inset-x-0 bottom-0 top-auto h-screen rounded-none border-t-0' : 'top-0'
+          )}
+        >
+          <div className="flex h-full flex-col">
+            <SidebarHeader className={cn(isMobile ? 'p-3' : 'p-4')}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-white">
+                  {format(currentDate, 'EEEE, d MMMM', { locale: es })}
+                </h2>
+                <SidebarTrigger className="h-10 w-10">
+                  <PanelLeftClose className={isMobile ? 'w-4 h-4' : 'w-5 h-5'} />
+                </SidebarTrigger>
+              </div>
+              {isMobile && (
+                <button onClick={() => setIsOpen(false)} className="flex justify-center pt-3">
+                  <div className="w-10 h-1 rounded-full bg-white/20" />
+                </button>
               )}
-            >
-              <div className="flex flex-col h-full">
-                <div className={cn(
-                  'flex items-center justify-between border-b border-white/10',
-                  isMobile ? 'p-3' : 'p-4'
-                )}>
-                  <h2 className="text-base font-semibold text-white">
-                    {format(currentDate, 'EEEE, d MMMM', { locale: es })}
-                  </h2>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-2 rounded-lg hover:bg-white/10"
-                  >
-                    <X className={isMobile ? 'w-4 h-4' : 'w-5 h-5'} />
-                  </button>
-                </div>
+            </SidebarHeader>
 
-                {isMobile && (
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="flex justify-center py-2"
-                  >
-                    <div className="w-10 h-1 rounded-full bg-white/20" />
-                  </button>
-                )}
+            <SidebarContent className={cn(isMobile ? 'p-3' : 'p-4')}>
+              <div className={cn('calendar-wrapper mb-4', isMobile && '!mb-3')}>
+                <Calendar
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(date) => date && setSelectedDate(format(date, 'yyyy-MM-dd'))}
+                  className="rounded-xl text-sm"
+                />
+              </div>
 
-                <div className={cn('flex-1 overflow-y-auto', isMobile ? 'p-3' : 'p-4')}>
-                  <div className={cn('calendar-wrapper mb-4', isMobile && '!mb-3')}>
-                    <Calendar
-                      mode="single"
-                      selected={currentDate}
-                      onSelect={(date) => date && setSelectedDate(format(date, 'yyyy-MM-dd'))}
-                      className="rounded-xl text-sm"
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <h3 className="text-xs font-medium text-white/70 mb-2">Turno</h3>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {shifts.map((shift) => (
-                        <button
-                          key={shift.type}
-                          onClick={() => setSelectedShift(shift.type)}
-                          className={cn(
-                            'p-2 rounded-xl text-left transition-all duration-200 border text-xs',
-                            selectedShift === shift.type
-                              ? 'bg-white/20 border-white/30 text-white'
-                              : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                          )}
-                        >
-                          <p className="font-medium">{shift.label}</p>
-                          <p className="text-[10px] text-white/50">{shift.hours}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <h3 className="text-xs font-medium text-white/70 mb-2">Hora</h3>
-                    <div className="grid grid-cols-4 gap-1">
-                      {timeSlots.slice(0, 8).map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedTime(time)}
-                          className={cn(
-                            'p-1.5 rounded-lg text-xs font-medium transition-all duration-200 border',
-                            selectedTime === time
-                              ? 'bg-white/20 border-white/30 text-white'
-                              : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                          )}
-                        >
-                          {formatTime(time)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mb-3">
-                    <h3 className="text-xs font-medium text-white/70 mb-2">
-                      Próximas ({filteredReservations.length})
-                    </h3>
-                    <div className="space-y-1.5">
-                      {filteredReservations.length === 0 ? (
-                        <p className="text-xs text-white/40 text-center py-3">
-                          No hay reservas
-                        </p>
-                      ) : (
-                        filteredReservations.slice(0, 5).map((res) => (
-                          <ReservationItem
-                            key={res.id}
-                            reservation={res}
-                            onClick={() => {}}
-                          />
-                        ))
+              <div className="mb-4">
+                <h3 className="text-xs font-medium text-white/70 mb-2">Turno</h3>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {shifts.map((shift) => (
+                    <button
+                      key={shift.type}
+                      onClick={() => setSelectedShift(shift.type)}
+                      className={cn(
+                        'p-2 rounded-xl text-left transition-all duration-200 border text-xs',
+                        selectedShift === shift.type
+                          ? 'bg-white/20 border-white/30 text-white'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
                       )}
-                    </div>
-                  </div>
+                    >
+                      <p className="font-medium">{shift.label}</p>
+                      <p className="text-[10px] text-white/50">{shift.hours}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                  {seatedForShift.length > 0 && (
-                    <div>
-                      <h3 className="text-xs font-medium text-white/70 mb-2">
-                        Sentados ({seatedForShift.length})
-                      </h3>
-                      <div className="space-y-1.5">
-                        {seatedForShift.slice(0, 3).map((res) => (
-                          <ReservationItem
-                            key={res.id}
-                            reservation={res}
-                            onClick={() => {}}
-                          />
-                        ))}
-                      </div>
-                    </div>
+              <div className="mb-4">
+                <h3 className="text-xs font-medium text-white/70 mb-2">Hora</h3>
+                <div className="grid grid-cols-4 gap-1">
+                  {timeSlots.slice(0, 8).map((time) => (
+                    <button
+                      key={time}
+                      onClick={() => setSelectedTime(time)}
+                      className={cn(
+                        'p-1.5 rounded-lg text-xs font-medium transition-all duration-200 border',
+                        selectedTime === time
+                          ? 'bg-white/20 border-white/30 text-white'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      )}
+                    >
+                      {formatTime(time)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <h3 className="text-xs font-medium text-white/70 mb-2">
+                  Próximas ({filteredReservations.length})
+                </h3>
+                <div className="space-y-1.5">
+                  {filteredReservations.length === 0 ? (
+                    <p className="text-xs text-white/40 text-center py-3">
+                      No hay reservas
+                    </p>
+                  ) : (
+                    filteredReservations.slice(0, 5).map((res) => (
+                      <ReservationItem
+                        key={res.id}
+                        reservation={res}
+                        onClick={() => {}}
+                      />
+                    ))
                   )}
                 </div>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+              {seatedForShift.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-medium text-white/70 mb-2">
+                    Sentados ({seatedForShift.length})
+                  </h3>
+                  <div className="space-y-1.5">
+                    {seatedForShift.slice(0, 3).map((res) => (
+                      <ReservationItem
+                        key={res.id}
+                        reservation={res}
+                        onClick={() => {}}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SidebarContent>
+          </div>
+        </Sidebar>
+      </SidebarProvider>
     </>
   )
 }
